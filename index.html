@@ -152,30 +152,20 @@
     .hero-visual {
       display: flex; justify-content: center; align-items: center;
     }
-    .arch-diagram {
-      background: var(--white); border: 1px solid var(--n100);
-      border-radius: var(--radius-2xl); padding: 32px;
-      box-shadow: var(--shadow-lg); width: 100%; max-width: 480px;
+    .hero-img {
+      width: 100%; max-width: 540px; border-radius: var(--radius-2xl);
+      box-shadow: var(--shadow-lg); border: 1px solid var(--n100);
     }
-    .arch-flow { display: flex; flex-direction: column; gap: 16px; align-items: center; }
-    .arch-node {
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 20px; border-radius: var(--radius-lg); width: 100%;
-      font-size: .875rem; font-weight: 600; transition: transform .2s ease;
+
+    /* SECTION BANNER IMAGES */
+    .sec-banner {
+      width: 100%; max-width: 800px; margin: 0 auto 48px;
+      border-radius: var(--radius-xl); overflow: hidden;
+      box-shadow: var(--shadow-md); border: 1px solid var(--n100);
     }
-    .arch-node:hover { transform: translateX(4px); }
-    .arch-node .icon { font-size: 1.25rem; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); flex-shrink: 0; }
-    .arch-node.user { background: rgba(153,204,238,.1); border: 1px solid rgba(153,204,238,.25); }
-    .arch-node.user .icon { background: rgba(153,204,238,.2); }
-    .arch-node.engine { background: rgba(119,108,176,.08); border: 1px solid rgba(119,108,176,.2); }
-    .arch-node.engine .icon { background: rgba(119,108,176,.15); }
-    .arch-node.tools { background: rgba(255,153,34,.06); border: 1px solid rgba(255,153,34,.2); }
-    .arch-node.tools .icon { background: rgba(255,153,34,.12); }
-    .arch-node.data { background: rgba(173,212,193,.1); border: 1px solid rgba(173,212,193,.3); }
-    .arch-node.data .icon { background: rgba(173,212,193,.2); }
-    .arch-node.response { background: rgba(193,121,189,.06); border: 1px solid rgba(193,121,189,.2); }
-    .arch-node.response .icon { background: rgba(193,121,189,.15); }
-    .arch-arrow { color: var(--n200); font-size: 1.25rem; line-height: 1; }
+    .sec-banner img {
+      width: 100%; height: auto; display: block;
+    }
 
     /* SECTIONS */
     .sec { max-width: 1200px; margin: 0 auto; padding: 80px 24px; }
@@ -437,34 +427,7 @@
         </div>
       </div>
       <div class="hero-visual">
-        <div class="arch-diagram">
-          <div class="arch-flow">
-            <div class="arch-node user">
-              <div class="icon">&#128172;</div>
-              <div><strong>CMO asks a question</strong><br><span style="font-size:.75rem;color:var(--n600)">@CMO Marketing Intelligence</span></div>
-            </div>
-            <div class="arch-arrow">&#8595;</div>
-            <div class="arch-node engine">
-              <div class="icon">&#9889;</div>
-              <div><strong>Gemini routes to tools</strong><br><span style="font-size:.75rem;color:var(--n600)">Vertex AI Reasoning Engine</span></div>
-            </div>
-            <div class="arch-arrow">&#8595;</div>
-            <div class="arch-node tools">
-              <div class="icon">&#128295;</div>
-              <div><strong>14 specialized tools fire</strong><br><span style="font-size:.75rem;color:var(--n600)">SQL queries to Domo datasets</span></div>
-            </div>
-            <div class="arch-arrow">&#8595;</div>
-            <div class="arch-node data">
-              <div class="icon">&#128202;</div>
-              <div><strong>Live data from 4M+ rows</strong><br><span style="font-size:.75rem;color:var(--n600)">~300ms per query</span></div>
-            </div>
-            <div class="arch-arrow">&#8595;</div>
-            <div class="arch-node response">
-              <div class="icon">&#10003;</div>
-              <div><strong>Analysis + verification links</strong><br><span style="font-size:.75rem;color:var(--n600)">Executive-grade response</span></div>
-            </div>
-          </div>
-        </div>
+        <img src="images/hero.png" alt="AI marketing intelligence command center with holographic dashboards" class="hero-img" loading="eager">
       </div>
     </div>
   </section>
@@ -544,6 +507,9 @@
       <h2>How a Question Becomes an Answer</h2>
       <p>Every query follows a five-stage pipeline from natural language to verified, executive-grade analysis.</p>
     </div>
+    <div class="sec-banner anim">
+      <img src="images/architecture.png" alt="AI data pipeline from question to verified analysis" loading="lazy">
+    </div>
     <div class="pipeline anim">
       <div class="pipeline-step">
         <div class="pipeline-num">1</div>
@@ -580,6 +546,9 @@
         <span class="sec-overline">Tech Stack</span>
         <h2>Built With</h2>
         <p>Production-grade infrastructure combining Google AI, cloud compute, and live business intelligence.</p>
+      </div>
+      <div class="sec-banner anim">
+        <img src="images/tech-stack.png" alt="Interconnected technology constellation network" loading="lazy">
       </div>
       <div class="stack-grid anim">
         <div class="stack-item">
@@ -624,6 +593,9 @@
       <span class="sec-overline">Data Sources</span>
       <h2>11 Live Datasets, 4M+ Rows</h2>
       <p>Every tool connects to a specific Domo dataset optimized for its domain, queried in real-time via SQL.</p>
+    </div>
+    <div class="sec-banner anim">
+      <img src="images/data-sources.png" alt="Data streams converging into unified analytics" loading="lazy">
     </div>
     <div class="anim" style="overflow-x:auto;">
       <table class="data-table">
@@ -690,6 +662,9 @@
       <span class="sec-overline">Validation</span>
       <h2>Tested Across 110 Real Questions</h2>
       <p>Seven iterations of testing against six grading criteria until we hit 100% pass rate.</p>
+    </div>
+    <div class="sec-banner anim">
+      <img src="images/quality.png" alt="100% quality assurance pass rate visualization" loading="lazy">
     </div>
     <div class="results-bar anim">
       <div class="result-item">
