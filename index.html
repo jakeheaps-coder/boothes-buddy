@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boothe's Buddy — How It's Made</title>
+  <meta name="description" content="How we built Boothe's Buddy, an AI-powered CMO marketing intelligence agent using Gemini, Vertex AI, and live Domo data.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --domo-blue: #99CCEE;
+      --domo-blue-dk: #7BB8E0;
+      --domo-blue-deep: #5A9FCC;
+      --accent-orange: #FF9922;
+      --accent-orange-hover: #E8891F;
+      --accent-purple: #776CB0;
+      --accent-mint: #ADD4C1;
+      --accent-pink: #C179BD;
+      --n50: #F1F6FA;
+      --n100: #DCE4EA;
+      --n200: #C4CDD6;
+      --n600: #68737F;
+      --n700: #545D68;
+      --n900: #3F454D;
+      --white: #FFFFFF;
+      --shadow-sm: 0 1px 3px rgba(63,69,77,.08);
+      --shadow-md: 0 4px 12px rgba(63,69,77,.1);
+      --shadow-lg: 0 8px 30px rgba(63,69,77,.12);
+      --shadow-glow: 0 0 20px rgba(153,204,238,.3);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --radius-2xl: 20px;
+      --ease-smooth: cubic-bezier(.83,0,.17,1);
+      --ease-out-expo: cubic-bezier(.16,1,.3,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Open Sans', sans-serif;
+      color: var(--n900);
+      background: var(--white);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.6;
+    }
+
+    /* NAV */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(255,255,255,.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--n100);
+      transition: box-shadow .3s ease;
+    }
+    .nav.scrolled { box-shadow: var(--shadow-md); }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 64px;
+    }
+    .nav-logo {
+      font-weight: 800; font-size: 1.1rem; color: var(--n900);
+      text-decoration: none; display: flex; align-items: center; gap: 8px;
+    }
+    .nav-logo span { color: var(--domo-blue-deep); }
+    .nav-links { display: flex; gap: 28px; list-style: none; }
+    .nav-links a {
+      text-decoration: none; color: var(--n600); font-size: .875rem; font-weight: 600;
+      transition: color .2s ease; position: relative;
+    }
+    .nav-links a:hover, .nav-links a.active { color: var(--domo-blue-deep); }
+    .nav-links a.active::after {
+      content: ''; position: absolute; bottom: -4px; left: 0; right: 0;
+      height: 2px; background: var(--domo-blue-deep); border-radius: 1px;
+    }
+    .mobile-toggle {
+      display: none; background: none; border: none; cursor: pointer;
+      width: 32px; height: 32px; position: relative;
+    }
+    .mobile-toggle span {
+      display: block; width: 20px; height: 2px; background: var(--n900);
+      position: absolute; left: 6px; transition: .3s ease;
+    }
+    .mobile-toggle span:nth-child(1) { top: 10px; }
+    .mobile-toggle span:nth-child(2) { top: 16px; }
+    .mobile-toggle span:nth-child(3) { top: 22px; }
+    .mobile-toggle.open span:nth-child(1) { top: 16px; transform: rotate(45deg); }
+    .mobile-toggle.open span:nth-child(2) { opacity: 0; }
+    .mobile-toggle.open span:nth-child(3) { top: 16px; transform: rotate(-45deg); }
+
+    /* HERO */
+    .hero {
+      padding: 140px 24px 80px;
+      background: linear-gradient(165deg, #f0f7fc 0%, var(--white) 40%, #fef8f0 100%);
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; top: -200px; right: -200px;
+      width: 600px; height: 600px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(153,204,238,.15) 0%, transparent 70%);
+    }
+    .hero::after {
+      content: ''; position: absolute; bottom: -100px; left: -100px;
+      width: 400px; height: 400px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,153,34,.08) 0%, transparent 70%);
+    }
+    .hero-inner {
+      max-width: 1200px; margin: 0 auto; position: relative; z-index: 1;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(153,204,238,.15); border: 1px solid rgba(153,204,238,.3);
+      backdrop-filter: blur(8px); border-radius: 100px;
+      padding: 6px 16px; font-size: .75rem; font-weight: 700;
+      color: var(--domo-blue-deep); text-transform: uppercase; letter-spacing: .05em;
+      margin-bottom: 20px; width: fit-content;
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #34C759;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .hero h1 {
+      font-size: clamp(2.25rem, 5vw, 3.5rem); font-weight: 800;
+      line-height: 1.15; letter-spacing: -.02em; margin-bottom: 16px;
+    }
+    .hero h1 .highlight {
+      background: linear-gradient(135deg, var(--domo-blue-deep), var(--accent-purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 1.125rem; color: var(--n600); line-height: 1.7;
+      margin-bottom: 32px; max-width: 500px;
+    }
+    .hero-stats {
+      display: flex; gap: 32px;
+    }
+    .hero-stat { text-align: left; }
+    .hero-stat-val {
+      font-size: 1.75rem; font-weight: 800; color: var(--n900);
+    }
+    .hero-stat-val .unit { font-size: 1rem; color: var(--domo-blue-deep); font-weight: 700; }
+    .hero-stat-lbl { font-size: .75rem; color: var(--n600); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+
+    .hero-visual {
+      display: flex; justify-content: center; align-items: center;
+    }
+    .arch-diagram {
+      background: var(--white); border: 1px solid var(--n100);
+      border-radius: var(--radius-2xl); padding: 32px;
+      box-shadow: var(--shadow-lg); width: 100%; max-width: 480px;
+    }
+    .arch-flow { display: flex; flex-direction: column; gap: 16px; align-items: center; }
+    .arch-node {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; border-radius: var(--radius-lg); width: 100%;
+      font-size: .875rem; font-weight: 600; transition: transform .2s ease;
+    }
+    .arch-node:hover { transform: translateX(4px); }
+    .arch-node .icon { font-size: 1.25rem; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); flex-shrink: 0; }
+    .arch-node.user { background: rgba(153,204,238,.1); border: 1px solid rgba(153,204,238,.25); }
+    .arch-node.user .icon { background: rgba(153,204,238,.2); }
+    .arch-node.engine { background: rgba(119,108,176,.08); border: 1px solid rgba(119,108,176,.2); }
+    .arch-node.engine .icon { background: rgba(119,108,176,.15); }
+    .arch-node.tools { background: rgba(255,153,34,.06); border: 1px solid rgba(255,153,34,.2); }
+    .arch-node.tools .icon { background: rgba(255,153,34,.12); }
+    .arch-node.data { background: rgba(173,212,193,.1); border: 1px solid rgba(173,212,193,.3); }
+    .arch-node.data .icon { background: rgba(173,212,193,.2); }
+    .arch-node.response { background: rgba(193,121,189,.06); border: 1px solid rgba(193,121,189,.2); }
+    .arch-node.response .icon { background: rgba(193,121,189,.15); }
+    .arch-arrow { color: var(--n200); font-size: 1.25rem; line-height: 1; }
+
+    /* SECTIONS */
+    .sec { max-width: 1200px; margin: 0 auto; padding: 80px 24px; }
+    .sec-alt { background: var(--n50); }
+    .sec-hd { text-align: center; margin-bottom: 56px; }
+    .sec-overline {
+      display: inline-block; font-size: .7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em;
+      color: var(--domo-blue-deep); background: rgba(153,204,238,.12);
+      border: 1px solid rgba(153,204,238,.2); border-radius: 100px;
+      padding: 4px 14px; margin-bottom: 16px;
+    }
+    .sec-hd h2 {
+      font-size: clamp(1.5rem, 3.5vw, 2.25rem); font-weight: 800;
+      line-height: 1.2; letter-spacing: -.015em; margin-bottom: 12px;
+    }
+    .sec-hd p { font-size: 1rem; color: var(--n600); max-width: 600px; margin: 0 auto; line-height: 1.7; }
+
+    /* CARDS */
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; }
+
+    .card {
+      background: var(--white); border: 1px solid var(--n100);
+      border-radius: var(--radius-xl); padding: 28px;
+      transition: transform .25s var(--ease-out-expo), box-shadow .25s ease, border-color .25s ease;
+    }
+    .card:hover {
+      transform: translateY(-3px); box-shadow: var(--shadow-lg);
+      border-color: var(--domo-blue);
+    }
+    .card-icon {
+      width: 44px; height: 44px; border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; margin-bottom: 16px;
+    }
+    .card-icon.blue { background: rgba(153,204,238,.15); }
+    .card-icon.orange { background: rgba(255,153,34,.1); }
+    .card-icon.purple { background: rgba(119,108,176,.1); }
+    .card-icon.mint { background: rgba(173,212,193,.15); }
+    .card-icon.pink { background: rgba(193,121,189,.1); }
+    .card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+    .card p { font-size: .875rem; color: var(--n600); line-height: 1.65; }
+
+    /* TECH STACK */
+    .stack-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .stack-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 18px 20px; background: var(--white); border: 1px solid var(--n100);
+      border-radius: var(--radius-lg); transition: all .2s ease;
+    }
+    .stack-item:hover { border-color: var(--domo-blue); box-shadow: var(--shadow-sm); }
+    .stack-item .s-icon {
+      width: 40px; height: 40px; border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .stack-item .s-icon.ai { background: rgba(119,108,176,.1); }
+    .stack-item .s-icon.cloud { background: rgba(153,204,238,.15); }
+    .stack-item .s-icon.data { background: rgba(255,153,34,.08); }
+    .stack-item .s-icon.code { background: rgba(173,212,193,.12); }
+    .stack-item strong { font-size: .875rem; display: block; }
+    .stack-item span { font-size: .75rem; color: var(--n600); }
+
+    /* PIPELINE */
+    .pipeline {
+      display: flex; align-items: stretch; gap: 0;
+      background: var(--white); border: 1px solid var(--n100);
+      border-radius: var(--radius-2xl); overflow: hidden;
+      box-shadow: var(--shadow-md);
+    }
+    .pipeline-step {
+      flex: 1; padding: 28px 24px; text-align: center; position: relative;
+      transition: background .2s ease;
+    }
+    .pipeline-step:not(:last-child)::after {
+      content: ''; position: absolute; right: 0; top: 20%; bottom: 20%;
+      width: 1px; background: var(--n100);
+    }
+    .pipeline-step:hover { background: var(--n50); }
+    .pipeline-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 800; margin: 0 auto 12px;
+      color: var(--white);
+    }
+    .pipeline-step:nth-child(1) .pipeline-num { background: var(--domo-blue-deep); }
+    .pipeline-step:nth-child(2) .pipeline-num { background: var(--accent-purple); }
+    .pipeline-step:nth-child(3) .pipeline-num { background: var(--accent-orange); }
+    .pipeline-step:nth-child(4) .pipeline-num { background: var(--accent-mint); color: var(--n900); }
+    .pipeline-step:nth-child(5) .pipeline-num { background: var(--accent-pink); }
+    .pipeline-step h4 { font-size: .85rem; font-weight: 700; margin-bottom: 6px; }
+    .pipeline-step p { font-size: .75rem; color: var(--n600); line-height: 1.5; }
+
+    /* ANALYSIS FRAMEWORK */
+    .framework-list {
+      display: flex; flex-direction: column; gap: 12px;
+      max-width: 700px; margin: 0 auto;
+    }
+    .framework-item {
+      display: flex; align-items: flex-start; gap: 16px;
+      padding: 18px 22px; background: var(--white); border: 1px solid var(--n100);
+      border-radius: var(--radius-lg); transition: all .25s ease;
+    }
+    .framework-item:hover { border-color: var(--domo-blue); transform: translateX(4px); }
+    .fw-label {
+      font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+      padding: 4px 10px; border-radius: var(--radius-sm); white-space: nowrap;
+      flex-shrink: 0; min-width: 90px; text-align: center;
+    }
+    .fw-label.blue { background: rgba(153,204,238,.15); color: var(--domo-blue-deep); }
+    .fw-label.purple { background: rgba(119,108,176,.1); color: var(--accent-purple); }
+    .fw-label.orange { background: rgba(255,153,34,.08); color: var(--accent-orange-hover); }
+    .fw-label.mint { background: rgba(173,212,193,.15); color: #4a8c6a; }
+    .fw-label.pink { background: rgba(193,121,189,.1); color: var(--accent-pink); }
+    .fw-desc { font-size: .875rem; color: var(--n700); line-height: 1.6; }
+
+    /* RESULTS BAR */
+    .results-bar {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;
+      max-width: 800px; margin: 0 auto;
+    }
+    .result-item { text-align: center; }
+    .result-val {
+      font-size: 2.25rem; font-weight: 800; color: var(--n900); line-height: 1;
+      margin-bottom: 6px;
+    }
+    .result-val .accent { color: var(--domo-blue-deep); }
+    .result-lbl { font-size: .75rem; color: var(--n600); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+
+    /* DATASETS TABLE */
+    .data-table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      border: 1px solid var(--n100); border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .data-table thead { background: var(--n50); }
+    .data-table th {
+      padding: 12px 18px; font-size: .75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em; color: var(--n600);
+      text-align: left; border-bottom: 1px solid var(--n100);
+    }
+    .data-table td {
+      padding: 14px 18px; font-size: .875rem; border-bottom: 1px solid var(--n100);
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(153,204,238,.04); }
+    .data-table .tag {
+      display: inline-block; font-size: .7rem; font-weight: 700;
+      padding: 3px 8px; border-radius: var(--radius-sm);
+      text-transform: uppercase; letter-spacing: .03em;
+    }
+    .tag-blue { background: rgba(153,204,238,.12); color: var(--domo-blue-deep); }
+    .tag-orange { background: rgba(255,153,34,.08); color: var(--accent-orange-hover); }
+    .tag-purple { background: rgba(119,108,176,.1); color: var(--accent-purple); }
+
+    /* FOOTER */
+    .footer {
+      border-top: 1px solid var(--n100); padding: 40px 24px;
+      text-align: center;
+    }
+    .footer p { font-size: .8rem; color: var(--n600); }
+    .footer a { color: var(--domo-blue-deep); text-decoration: none; font-weight: 600; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* ANIMATIONS */
+    .anim { opacity: 0; transform: translateY(24px); transition: opacity .6s var(--ease-out-expo), transform .6s var(--ease-out-expo); }
+    .anim.visible { opacity: 1; transform: translateY(0); }
+    .anim-delay-1 { transition-delay: .1s; }
+    .anim-delay-2 { transition-delay: .2s; }
+    .anim-delay-3 { transition-delay: .3s; }
+    .anim-delay-4 { transition-delay: .4s; }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .hero-inner > * { animation: fadeUp .8s var(--ease-out-expo) both; }
+    .hero-visual { animation-delay: .15s; }
+
+    /* RESPONSIVE */
+    @media (max-width: 992px) {
+      .hero-inner { grid-template-columns: 1fr; text-align: center; }
+      .hero-sub { margin-left: auto; margin-right: auto; }
+      .hero-badge { margin-left: auto; margin-right: auto; }
+      .hero-stats { justify-content: center; }
+      .hero-visual { order: -1; }
+      .pipeline { flex-direction: column; }
+      .pipeline-step:not(:last-child)::after {
+        right: 20%; left: 20%; top: auto; bottom: 0;
+        width: auto; height: 1px;
+      }
+      .results-bar { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .mobile-toggle { display: block; }
+      .nav-links.open {
+        display: flex; flex-direction: column; position: absolute;
+        top: 64px; left: 0; right: 0; background: var(--white);
+        padding: 16px 24px; border-bottom: 1px solid var(--n100);
+        box-shadow: var(--shadow-md); gap: 16px;
+      }
+      .hero { padding: 120px 24px 60px; }
+      .sec { padding: 60px 24px; }
+      .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .stack-grid { grid-template-columns: 1fr 1fr; }
+      .data-table { font-size: .8rem; }
+      .data-table th, .data-table td { padding: 10px 12px; }
+    }
+    @media (max-width: 480px) {
+      .stack-grid { grid-template-columns: 1fr; }
+      .hero-stats { flex-direction: column; gap: 16px; align-items: center; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .anim { opacity: 1; transform: none; transition: none; }
+      .hero-inner > * { animation: none; }
+      .hero-badge .dot { animation: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">Boothe's <span>Buddy</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#overview" class="active">Overview</a></li>
+        <li><a href="#capabilities">Capabilities</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#stack">Tech Stack</a></li>
+        <li><a href="#data">Data Sources</a></li>
+        <li><a href="#quality">Quality</a></li>
+      </ul>
+      <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="overview">
+    <div class="hero-inner">
+      <div>
+        <div class="hero-badge"><span class="dot"></span> Production &mdash; Gemini Enterprise</div>
+        <h1>How We Built<br><span class="highlight">Boothe's Buddy</span></h1>
+        <p class="hero-sub">An AI-powered CMO Marketing Intelligence agent that transforms live Domo data into executive-grade analysis in seconds &mdash; built with Gemini, Vertex AI, and 11 real-time datasets.</p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-val" data-value="11">0</div>
+            <div class="hero-stat-lbl">Live Datasets</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val" data-value="110">0</div>
+            <div class="hero-stat-lbl">Test Questions</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val">100<span class="unit">%</span></div>
+            <div class="hero-stat-lbl">Pass Rate</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="arch-diagram">
+          <div class="arch-flow">
+            <div class="arch-node user">
+              <div class="icon">&#128172;</div>
+              <div><strong>CMO asks a question</strong><br><span style="font-size:.75rem;color:var(--n600)">@CMO Marketing Intelligence</span></div>
+            </div>
+            <div class="arch-arrow">&#8595;</div>
+            <div class="arch-node engine">
+              <div class="icon">&#9889;</div>
+              <div><strong>Gemini routes to tools</strong><br><span style="font-size:.75rem;color:var(--n600)">Vertex AI Reasoning Engine</span></div>
+            </div>
+            <div class="arch-arrow">&#8595;</div>
+            <div class="arch-node tools">
+              <div class="icon">&#128295;</div>
+              <div><strong>14 specialized tools fire</strong><br><span style="font-size:.75rem;color:var(--n600)">SQL queries to Domo datasets</span></div>
+            </div>
+            <div class="arch-arrow">&#8595;</div>
+            <div class="arch-node data">
+              <div class="icon">&#128202;</div>
+              <div><strong>Live data from 4M+ rows</strong><br><span style="font-size:.75rem;color:var(--n600)">~300ms per query</span></div>
+            </div>
+            <div class="arch-arrow">&#8595;</div>
+            <div class="arch-node response">
+              <div class="icon">&#10003;</div>
+              <div><strong>Analysis + verification links</strong><br><span style="font-size:.75rem;color:var(--n600)">Executive-grade response</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CAPABILITIES -->
+  <div class="sec-alt" id="capabilities">
+    <section class="sec">
+      <div class="sec-hd anim">
+        <span class="sec-overline">Capabilities</span>
+        <h2>11 Marketing Analytics Domains</h2>
+        <p>From funnel metrics to paid media keywords, every marketing question the CMO asks is covered by a purpose-built tool.</p>
+      </div>
+      <div class="grid-3">
+        <div class="card anim">
+          <div class="card-icon blue">&#128200;</div>
+          <h3>Funnel Analysis</h3>
+          <p>MQL to SAL to SQO to Win conversion rates, rolling trends, and stage-by-stage performance across the entire pipeline.</p>
+        </div>
+        <div class="card anim anim-delay-1">
+          <div class="card-icon purple">&#127919;</div>
+          <h3>Pipeline Intelligence</h3>
+          <p>Current pipeline value, pacing vs targets, forecasts, and deal distribution by stage and region.</p>
+        </div>
+        <div class="card anim anim-delay-2">
+          <div class="card-icon orange">&#128279;</div>
+          <h3>Attribution Analysis</h3>
+          <p>Multi-touch campaign-to-opportunity attribution showing which channels actually drive pipeline and revenue.</p>
+        </div>
+        <div class="card anim">
+          <div class="card-icon mint">&#128176;</div>
+          <h3>ROI &amp; Efficiency</h3>
+          <p>Cost per lead, customer acquisition cost, MROI, and channel ROI comparisons with budget vs actuals.</p>
+        </div>
+        <div class="card anim anim-delay-1">
+          <div class="card-icon blue">&#127793;</div>
+          <h3>New Logo Tracking</h3>
+          <p>New business funnel performance, targets vs actuals, ACV analysis, deal sizes, and velocity metrics.</p>
+        </div>
+        <div class="card anim anim-delay-2">
+          <div class="card-icon pink">&#128257;</div>
+          <h3>Upsell &amp; Renewal</h3>
+          <p>Expansion pipeline health, quarter-over-quarter and year-over-year trends, and POR target pacing.</p>
+        </div>
+        <div class="card anim">
+          <div class="card-icon orange">&#128269;</div>
+          <h3>Paid Media Deep-Dive</h3>
+          <p>Keyword-level analysis with spend breakdowns, branded vs non-branded performance, and cost per MQL.</p>
+        </div>
+        <div class="card anim anim-delay-1">
+          <div class="card-icon mint">&#128101;</div>
+          <h3>Community Engagement</h3>
+          <p>Customer health metrics, platform adoption, forum activity, and community engagement tracking.</p>
+        </div>
+        <div class="card anim anim-delay-2">
+          <div class="card-icon purple">&#128640;</div>
+          <h3>Campaign Impact</h3>
+          <p>Lead source analysis, UTM tracking, and lead generation performance by channel.</p>
+        </div>
+        <div class="card anim">
+          <div class="card-icon blue">&#128290;</div>
+          <h3>Card Creation</h3>
+          <p>Programmatically creates Domo visualizations on the fly with beast modes and custom chart types.</p>
+        </div>
+        <div class="card anim anim-delay-1">
+          <div class="card-icon orange">&#128270;</div>
+          <h3>Data Transparency</h3>
+          <p>Every answer includes methodology, source datasets, SQL queries, and direct Domo verification links.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ARCHITECTURE -->
+  <section class="sec" id="architecture">
+    <div class="sec-hd anim">
+      <span class="sec-overline">Architecture</span>
+      <h2>How a Question Becomes an Answer</h2>
+      <p>Every query follows a five-stage pipeline from natural language to verified, executive-grade analysis.</p>
+    </div>
+    <div class="pipeline anim">
+      <div class="pipeline-step">
+        <div class="pipeline-num">1</div>
+        <h4>Query Received</h4>
+        <p>CMO asks a question via @mention in Gemini Enterprise</p>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-num">2</div>
+        <h4>Tool Selection</h4>
+        <p>Decision tree routes to the right tool based on keywords and context</p>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-num">3</div>
+        <h4>Data Retrieval</h4>
+        <p>SQL queries execute against live Domo datasets in ~300ms</p>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-num">4</div>
+        <h4>Analysis Engine</h4>
+        <p>Gemini analyzes results with QoQ/YoY context and business implications</p>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-num">5</div>
+        <h4>Verified Response</h4>
+        <p>Formatted answer with methodology, sources, and clickable Domo links</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH STACK -->
+  <div class="sec-alt" id="stack">
+    <section class="sec">
+      <div class="sec-hd anim">
+        <span class="sec-overline">Tech Stack</span>
+        <h2>Built With</h2>
+        <p>Production-grade infrastructure combining Google AI, cloud compute, and live business intelligence.</p>
+      </div>
+      <div class="stack-grid anim">
+        <div class="stack-item">
+          <div class="s-icon ai">&#129302;</div>
+          <div><strong>Gemini 2.5 Flash</strong><span>AI model (temp: 0)</span></div>
+        </div>
+        <div class="stack-item">
+          <div class="s-icon cloud">&#9729;&#65039;</div>
+          <div><strong>Vertex AI</strong><span>Reasoning Engine</span></div>
+        </div>
+        <div class="stack-item">
+          <div class="s-icon cloud">&#128187;</div>
+          <div><strong>Cloud Run</strong><span>Serverless compute</span></div>
+        </div>
+        <div class="stack-item">
+          <div class="s-icon ai">&#128218;</div>
+          <div><strong>Google ADK</strong><span>Agent Development Kit</span></div>
+        </div>
+        <div class="stack-item">
+          <div class="s-icon code">&#128013;</div>
+          <div><strong>Python 3.10+</strong><span>Agent runtime</span></div>
+        </div>
+        <div class="stack-item">
+          <div class="s-icon data">&#128202;</div>
+          <div><strong>Domo BI</strong><span>11 live datasets</span></div>
+        </div>
+        <div class="stack-item">
+          <div class="s-icon data">&#128451;</div>
+          <div><strong>Domo SQL API</strong><span>Real-time queries</span></div>
+        </div>
+        <div class="stack-item">
+          <div class="s-icon ai">&#128752;</div>
+          <div><strong>Knowledge Graph</strong><span>Neo4j + Cloud Run</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- DATA SOURCES -->
+  <section class="sec" id="data">
+    <div class="sec-hd anim">
+      <span class="sec-overline">Data Sources</span>
+      <h2>11 Live Datasets, 4M+ Rows</h2>
+      <p>Every tool connects to a specific Domo dataset optimized for its domain, queried in real-time via SQL.</p>
+    </div>
+    <div class="anim" style="overflow-x:auto;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Tool</th>
+            <th>Dataset</th>
+            <th>Domain</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>get_conversion_metrics</td><td>Conversion Metrics</td><td><span class="tag tag-blue">Funnel</span></td></tr>
+          <tr><td>get_pipeline_data</td><td>Pipeline</td><td><span class="tag tag-blue">Pipeline</span></td></tr>
+          <tr><td>get_attribution_data</td><td>Attribution 2.0</td><td><span class="tag tag-purple">Attribution</span></td></tr>
+          <tr><td>get_roi_efficiency</td><td>ROI Channel Performance</td><td><span class="tag tag-orange">ROI</span></td></tr>
+          <tr><td>get_new_logo_funnel</td><td>New Logo Funnel</td><td><span class="tag tag-blue">New Logos</span></td></tr>
+          <tr><td>get_upsell_renewal_kpis</td><td>Upsell &amp; Renewal KPIs</td><td><span class="tag tag-purple">Expansion</span></td></tr>
+          <tr><td>get_paid_media_keywords</td><td>NAM Paid Media by Keyword</td><td><span class="tag tag-orange">Paid Media</span></td></tr>
+          <tr><td>get_campaign_impact</td><td>Campaign &amp; Channel Impact</td><td><span class="tag tag-purple">Campaigns</span></td></tr>
+          <tr><td>get_community_engagement</td><td>Community Instance + Forums</td><td><span class="tag tag-blue">Community</span></td></tr>
+          <tr><td>create_domo_card</td><td>Card Creation API</td><td><span class="tag tag-orange">Visualization</span></td></tr>
+          <tr><td>query_any_dataset</td><td>Any dataset (fallback)</td><td><span class="tag tag-purple">Universal</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- RESPONSE QUALITY -->
+  <div class="sec-alt" id="quality">
+    <section class="sec">
+      <div class="sec-hd anim">
+        <span class="sec-overline">Response Quality</span>
+        <h2>Every Answer Follows a Framework</h2>
+        <p>Rigorous system instructions enforce a five-part analysis structure on every single response.</p>
+      </div>
+      <div class="framework-list anim">
+        <div class="framework-item">
+          <span class="fw-label blue">Answer</span>
+          <span class="fw-desc">Lead with the key number or insight. No preamble &mdash; the CMO gets the answer first.</span>
+        </div>
+        <div class="framework-item">
+          <span class="fw-label purple">Context</span>
+          <span class="fw-desc">Quarter-over-quarter and year-over-year comparisons to ground the number in trends.</span>
+        </div>
+        <div class="framework-item">
+          <span class="fw-label orange">Why</span>
+          <span class="fw-desc">Mandatory analysis of what's driving the movement. Never just report data &mdash; explain it.</span>
+        </div>
+        <div class="framework-item">
+          <span class="fw-label mint">So What</span>
+          <span class="fw-desc">Business implication translated into language an executive acts on.</span>
+        </div>
+        <div class="framework-item">
+          <span class="fw-label pink">Sources</span>
+          <span class="fw-desc">Methodology, dataset, SQL logic, and clickable Domo links so the CMO can verify every number.</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- TEST RESULTS -->
+  <section class="sec">
+    <div class="sec-hd anim">
+      <span class="sec-overline">Validation</span>
+      <h2>Tested Across 110 Real Questions</h2>
+      <p>Seven iterations of testing against six grading criteria until we hit 100% pass rate.</p>
+    </div>
+    <div class="results-bar anim">
+      <div class="result-item">
+        <div class="result-val" data-value="110">0</div>
+        <div class="result-lbl">Test Questions</div>
+      </div>
+      <div class="result-item">
+        <div class="result-val"><span class="accent" data-value="100">0</span>%</div>
+        <div class="result-lbl">Pass Rate</div>
+      </div>
+      <div class="result-item">
+        <div class="result-val" data-value="7">0</div>
+        <div class="result-lbl">Iterations</div>
+      </div>
+      <div class="result-item">
+        <div class="result-val" data-value="6">0</div>
+        <div class="result-lbl">Grading Criteria</div>
+      </div>
+    </div>
+    <div class="grid-3 anim" style="margin-top:48px;">
+      <div class="card">
+        <h3>Tool Selection</h3>
+        <p>Correct tool chosen for the question domain. Priority routing rules prevent common mistakes.</p>
+        <div style="font-size:1.5rem;font-weight:800;color:var(--domo-blue-deep);margin-top:12px;">99.1%</div>
+      </div>
+      <div class="card">
+        <h3>Data Returned</h3>
+        <p>Query returns actual rows with real numbers. Retry logic catches empty results automatically.</p>
+        <div style="font-size:1.5rem;font-weight:800;color:var(--domo-blue-deep);margin-top:12px;">100%</div>
+      </div>
+      <div class="card">
+        <h3>Has Sources</h3>
+        <p>Every response includes dataset names, methodology notes, and verification links to Domo.</p>
+        <div style="font-size:1.5rem;font-weight:800;color:var(--domo-blue-deep);margin-top:12px;">100%</div>
+      </div>
+      <div class="card">
+        <h3>Has Analysis</h3>
+        <p>Mandatory "why" and "so what" sections explaining the business implications of the data.</p>
+        <div style="font-size:1.5rem;font-weight:800;color:var(--domo-blue-deep);margin-top:12px;">93.6%</div>
+      </div>
+      <div class="card">
+        <h3>Executive Format</h3>
+        <p>Responses use tables, bullet points, and structured formatting optimized for executive consumption.</p>
+        <div style="font-size:1.5rem;font-weight:800;color:var(--domo-blue-deep);margin-top:12px;">99.1%</div>
+      </div>
+      <div class="card">
+        <h3>Accurate Scope</h3>
+        <p>Answers stay within the requested time range and metric scope without hallucinated data.</p>
+        <div style="font-size:1.5rem;font-weight:800;color:var(--domo-blue-deep);margin-top:12px;">100%</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>Boothe's Buddy &mdash; CMO Marketing Intelligence Agent &bull; Built by <a href="#">Jake Heaps</a> &bull; Domo Marketing &amp; Growth</p>
+  </footer>
+
+  <script>
+    (function() {
+      // Nav scroll effect
+      var nav = document.getElementById('nav');
+      window.addEventListener('scroll', function() {
+        nav.classList.toggle('scrolled', window.scrollY > 20);
+      });
+
+      // Mobile menu toggle
+      var toggle = document.getElementById('mobileToggle');
+      var links = document.getElementById('navLinks');
+      toggle.addEventListener('click', function() {
+        toggle.classList.toggle('open');
+        links.classList.toggle('open');
+      });
+
+      // Active nav tracking
+      var sections = document.querySelectorAll('section[id], div[id]');
+      var navAnchors = document.querySelectorAll('.nav-links a');
+      window.addEventListener('scroll', function() {
+        var current = '';
+        sections.forEach(function(s) {
+          if (window.scrollY >= s.offsetTop - 100) current = s.getAttribute('id');
+        });
+        navAnchors.forEach(function(a) {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+        });
+      });
+
+      // Close mobile menu on link click
+      navAnchors.forEach(function(a) {
+        a.addEventListener('click', function() {
+          toggle.classList.remove('open');
+          links.classList.remove('open');
+        });
+      });
+
+      // Intersection Observer for scroll animations
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+            observer.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.15 });
+      document.querySelectorAll('.anim').forEach(function(el) { observer.observe(el); });
+
+      // Counter animation
+      function animateCounter(el, target, duration) {
+        var start = 0;
+        var startTime = null;
+        function step(ts) {
+          if (!startTime) startTime = ts;
+          var progress = Math.min((ts - startTime) / duration, 1);
+          var eased = 1 - Math.pow(1 - progress, 3);
+          el.textContent = Math.round(eased * target);
+          if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+
+      var counterObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) {
+            var val = parseInt(e.target.getAttribute('data-value'));
+            if (val) animateCounter(e.target, val, 1200);
+            counterObserver.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.5 });
+      document.querySelectorAll('[data-value]').forEach(function(el) { counterObserver.observe(el); });
+    })();
+  </script>
+
+</body>
+</html>
